@@ -1,0 +1,47 @@
+# Core ML frameworks
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.35.0
+ftfy>=6.1.1          # CLIP tokenizer dependency
+regex>=2022.10.31    # CLIP tokenizer dependency
+
+# CLIP (installed from source via pip)
+git+https://github.com/openai/CLIP.git
+
+# Vector database
+pinecone>=3.0.0
+
+# Dataset handling
+datasets>=2.14.0
+huggingface_hub>=0.19.0
+Pillow>=9.5.0
+numpy>=1.24.0
+scipy>=1.11.0
+
+# NLP
+spacy>=3.6.0
+
+# Data processing
+pandas>=1.5.0
+tqdm>=4.65.0
+
+# Configuration
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Retry logic
+tenacity>=8.2.0
+
+# Streamlit UI
+streamlit>=1.28.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Code quality
+black>=23.0.0
+isort>=5.12.0
+
+# Utilities
+requests>=2.31.0

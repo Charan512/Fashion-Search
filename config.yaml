@@ -1,0 +1,119 @@
+# ─────────────────────────────────────────────────────────────
+# Fashion Retrieval System — Centralized Configuration
+# ─────────────────────────────────────────────────────────────
+
+# ── Model Configuration ─────────────────────────────────────
+models:
+  clip:
+    name: "ViT-B/32"                        # openai/clip ViT-B/32
+    embedding_dim: 512
+    device: "cuda"                           # falls back to cpu if unavailable
+
+  fashion_clip:
+    name: "patrickjohncyh/fashion-clip"      # HuggingFace model ID
+    embedding_dim: 512
+    device: "cuda"
+
+# ── Vector Database ──────────────────────────────────────────
+vector_db:
+  provider: "pinecone"
+  api_key: "${PINECONE_API_KEY}"             # injected from .env
+  index_name: "${PINECONE_INDEX_NAME}"       # injected from .env
+  dimension: 512
+  metric: "cosine"
+  batch_size: 100                            # upsert batch size
+
+# ── Dataset ──────────────────────────────────────────────────
+dataset:
+  name: "detection-datasets/fashionpedia"
+  subset_size: 1000                          # dev default; override with env var
+  image_size: 224
+  batch_size: 32
+  num_workers: 2
+  checkpoint_path: "checkpoints/index_checkpoint.json"
+
+# ── Search & Retrieval ───────────────────────────────────────
+search:
+  weights:
+    semantic: 0.50     # CLIP similarity contribution
+    fashion: 0.30      # FashionCLIP similarity contribution
+    attribute: 0.20    # Attribute match score contribution
+  top_k_candidates: 100          # candidates fetched per vector search
+  final_top_k: 10                # results returned to user
+  confidence_threshold: 0.30    # minimum combined score to keep
+  diversity_enabled: true
+  hard_constraints: true         # enforce formality/setting hard filters
+
+# ── Attribute Extraction ─────────────────────────────────────
+attributes:
+  colors:
+    - red
+    - blue
+    - green
+    - yellow
+    - orange
+    - purple
+    - pink
+    - brown
+    - black
+    - white
+    - gray
+    - navy
+    - maroon
+    - teal
+    - lime
+    - gold
+    - silver
+    - beige
+
+  clothing_items:
+    - shirt
+    - t-shirt
+    - blouse
+    - tie
+    - blazer
+    - jacket
+    - coat
+    - pants
+    - trousers
+    - jeans
+    - shorts
+    - skirt
+    - dress
+    - suit
+    - sweater
+    - hoodie
+    - vest
+    - scarf
+    - hat
+    - cap
+    - shoes
+    - sneakers
+    - boots
+    - heels
+    - raincoat
+
+  settings:
+    - indoor_office
+    - outdoor_park
+    - outdoor_street
+    - home_interior
+    - gym
+    - beach
+    - restaurant
+    - shopping_mall
+
+  style_categories:
+    - business_formal
+    - smart_casual
+    - casual
+    - athletic
+    - elegant
+    - streetwear
+    - bohemian
+
+# ── Logging ──────────────────────────────────────────────────
+logging:
+  level: "INFO"
+  format: "%(asctime)s — %(name)s — %(levelname)s — %(message)s"
+  log_file: "logs/fashion_retrieval.log"
