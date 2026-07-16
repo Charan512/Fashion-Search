@@ -17,6 +17,32 @@ from demo.components.theme import (
     TEXT_MUTED,
 )
 
+# ── COCO image CDN template ───────────────────────────────────────────────────
+# Fashionpedia is built on MS-COCO, so every numeric image_id maps directly to
+# a permanently hosted COCO image. No re-indexing is required — we construct
+# the URL on the fly from the image_id that is already stored in Pinecone.
+_COCO_URL_TEMPLATE = "http://images.cocodataset.org/train2017/{image_id:012d}.jpg"
+
+
+def _resolve_image_url(result) -> str:
+    """Return the best available HTTP URL for a result image.
+
+    Priority:
+      1. ``result.image_url`` — populated if stored explicitly during indexing.
+      2. COCO CDN URL derived from ``result.image_id`` (Fashionpedia images).
+      3. Empty string — caller will render the placeholder.
+    """
+    if result.image_url and result.image_url.startswith("http"):
+        return result.image_url
+
+    # Try to derive a COCO URL from the numeric image_id
+    image_id = result.image_id or result.metadata.get("image_id", "")
+    try:
+        numeric_id = int(str(image_id).strip())
+        return _COCO_URL_TEMPLATE.format(image_id=numeric_id)
+    except (ValueError, TypeError):
+        return ""
+
 
 def render_result_card(
     rank: int,
@@ -37,10 +63,11 @@ def render_result_card(
 
         # ── Image column ──────────────────────────────────────
         with col_img:
-            if result.image_url and result.image_url.startswith("http"):
+            image_url = _resolve_image_url(result)
+            if image_url:
                 try:
                     st.image(
-                        result.image_url,
+                        image_url,
                         use_container_width=True,
                         caption=f"#{rank}",
                     )
