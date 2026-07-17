@@ -140,23 +140,23 @@ class ImageProcessor:
 # ── HuggingFace Dataset Loader ────────────────────────────────────────────────
 
 
-def load_fashionpedia(
-    subset_size: int = 1000,
+def load_ashraq_dataset(
+    subset_size: int = 5000,
     split: str = "train",
 ) -> Tuple[List[Image.Image], List[Dict[str, Any]]]:
-    """Load Fashionpedia images from HuggingFace Datasets.
+    """Load fashion products from ashraq/fashion-product-images-small.
 
     Downloads the dataset on first call and caches it locally.
     Only ``subset_size`` items are loaded to keep memory manageable.
 
     Args:
         subset_size: Maximum number of images to load.
-        split: Dataset split to use (``"train"`` or ``"validation"``).
+        split: Dataset split to use (only "train" exists).
 
     Returns:
         ``(images, metadata)`` where ``images`` is a list of PIL Images
         and ``metadata`` is a list of per-image dicts containing
-        ``image_id``, ``source``, ``split``, and available labels.
+        ``image_id``, ``source``, and extended product metadata.
 
     Raises:
         ImportError: If the ``datasets`` package is not installed.
@@ -168,13 +168,11 @@ def load_fashionpedia(
             "The 'datasets' package is required. Install it with: pip install datasets"
         ) from exc
 
-    logger.info("Loading Fashionpedia dataset (split=%s, subset=%d)…", split, subset_size)
+    logger.info("Loading ashraq/fashion-product-images dataset (subset=%d)…", subset_size)
 
-    # Detection-datasets/fashionpedia is publicly available on HF Hub
     dataset = hf_load_dataset(
-        "detection-datasets/fashionpedia",
+        "ashraq/fashion-product-images-small",
         split=split,
-        trust_remote_code=True,
     )
 
     # Take a subset for dev speed
@@ -194,20 +192,26 @@ def load_fashionpedia(
         if pil_img.mode != "RGB":
             pil_img = pil_img.convert("RGB")
 
-        image_id = str(item.get("image_id", f"fashionpedia_{idx:06d}"))
+        image_id = str(item.get("id", f"ashraq_{idx:06d}"))
         images.append(pil_img)
         metadata.append(
             {
                 "image_id": image_id,
-                "source": "fashionpedia",
-                "split": split,
+                "source": "ashraq_fashion_products",
+                "gender": item.get("gender", ""),
+                "masterCategory": item.get("masterCategory", ""),
+                "subCategory": item.get("subCategory", ""),
+                "articleType": item.get("articleType", ""),
+                "baseColour": item.get("baseColour", ""),
+                "productDisplayName": item.get("productDisplayName", ""),
                 "width": pil_img.width,
                 "height": pil_img.height,
             }
         )
 
-        if (idx + 1) % 100 == 0:
+        if (idx + 1) % 500 == 0:
             logger.info("Loaded %d / %d images…", idx + 1, subset_size)
 
-    logger.info("Fashionpedia load complete: %d images ready.", len(images))
+    logger.info("Dataset load complete: %d images ready.", len(images))
     return images, metadata
+

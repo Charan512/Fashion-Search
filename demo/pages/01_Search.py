@@ -61,7 +61,7 @@ chip_cols = st.columns(5)
 for i, (col, query) in enumerate(zip(chip_cols, EXAMPLE_QUERIES)):
     with col:
         short = query[:28] + "…" if len(query) > 28 else query
-        if st.button(short, key=f"chip_{i}", use_container_width=True):
+        if st.button(short, key=f"chip_{i}", width="stretch"):
             st.session_state["prefill_query"] = query
 
 # ── Search input ──────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ with col_k:
     top_k = st.slider("Number of results", 1, 20, 10)
 with col_btn:
     st.markdown("<br>", unsafe_allow_html=True)
-    search_clicked = st.button("Search", type="primary", use_container_width=True)
+    search_clicked = st.button("Search", type="primary", width="stretch")
 
 # ── Query components debug panel ──────────────────────────────────────────────
 if query and st.toggle("🔬 Show query decomposition", value=False):

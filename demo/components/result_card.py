@@ -6,6 +6,10 @@ matching attributes, and a human-readable explanation.
 """
 from __future__ import annotations
 
+import json
+import base64
+import io
+from pathlib import Path
 from typing import Optional
 
 import streamlit as st
@@ -17,31 +21,42 @@ from demo.components.theme import (
     TEXT_MUTED,
 )
 
-# ── COCO image CDN template ───────────────────────────────────────────────────
-# Fashionpedia is built on MS-COCO, so every numeric image_id maps directly to
-# a permanently hosted COCO image. No re-indexing is required — we construct
-# the URL on the fly from the image_id that is already stored in Pinecone.
-_COCO_URL_TEMPLATE = "http://images.cocodataset.org/train2017/{image_id:012d}.jpg"
+# ── Thumbnail cache ───────────────────────────────────────────────────────────
+# Pre-generated 320px JPEG thumbnails for all 1000 indexed images.
+# Built by running: python3 scripts/build_thumbnails.py
+# The COCO CDN only hosts a subset of Fashionpedia images publicly (most 404),
+# so we embed thumbnails directly rather than relying on external URLs.
+_THUMB_PATH = Path(__file__).parent.parent / "thumbnails.json"
 
 
-def _resolve_image_url(result) -> str:
-    """Return the best available HTTP URL for a result image.
+@st.cache_data(show_spinner=False)
+def _load_thumbnails() -> dict:
+    """Load thumbnail base64 map. Cached once per Streamlit session."""
+    if _THUMB_PATH.exists():
+        with open(_THUMB_PATH) as f:
+            return json.load(f)
+    return {}
+
+
+def _resolve_image(result):
+    """Return a PIL image or HTTP URL for the result, or None if unavailable.
 
     Priority:
-      1. ``result.image_url`` — populated if stored explicitly during indexing.
-      2. COCO CDN URL derived from ``result.image_id`` (Fashionpedia images).
-      3. Empty string — caller will render the placeholder.
+      1. ``result.image_url`` — explicit HTTP URL stored during indexing.
+      2. Base64 thumbnail from local cache (thumbnails.json).
+      3. None — caller renders the placeholder.
     """
     if result.image_url and result.image_url.startswith("http"):
         return result.image_url
 
-    # Try to derive a COCO URL from the numeric image_id
-    image_id = result.image_id or result.metadata.get("image_id", "")
-    try:
-        numeric_id = int(str(image_id).strip())
-        return _COCO_URL_TEMPLATE.format(image_id=numeric_id)
-    except (ValueError, TypeError):
-        return ""
+    thumbs = _load_thumbnails()
+    row_id = str(result.image_id).strip()
+    b64 = thumbs.get(row_id)
+    if b64:
+        from PIL import Image
+        return Image.open(io.BytesIO(base64.b64decode(b64)))
+    return None
+
 
 
 def render_result_card(
@@ -63,12 +78,12 @@ def render_result_card(
 
         # ── Image column ──────────────────────────────────────
         with col_img:
-            image_url = _resolve_image_url(result)
-            if image_url:
+            image = _resolve_image(result)
+            if image is not None:
                 try:
                     st.image(
-                        image_url,
-                        use_container_width=True,
+                        image,
+                        width="stretch",
                         caption=f"#{rank}",
                     )
                 except Exception:

@@ -97,7 +97,7 @@ for i, eq in enumerate(EVALUATION_QUERIES):
             )
         st.markdown("</div></div>", unsafe_allow_html=True)
 
-        if st.button(f"Run Query {i+1}", key=f"run_{i}", use_container_width=False):
+        if st.button(f"Run Query {i+1}", key=f"run_{i}", width="content"):
             st.session_state["prefill_query"] = eq["query"]
             st.switch_page("pages/01_Search.py")
 

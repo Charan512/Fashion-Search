@@ -6,42 +6,71 @@ An intelligent multimodal search engine that retrieves fashion images based on n
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Setup Guide
 
+Follow these steps to get the system up and running on your local machine.
+
+### 1. Prerequisites
+Ensure you have Python 3.9+ installed. You will also need a free Pinecone account for the vector database.
+
+### 2. Environment Setup
+Clone the repository and set up a virtual environment:
 ```bash
-# 1. Clone and enter
-git clone <repo-url>
+git clone https://github.com/Charan512/Fashion-Search.git
 cd Fashion-Search
 
-# 2. Set up environment
-python -m venv .venv && source .venv/bin/activate
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+Install the required packages and the core CLIP model from source:
+```bash
 pip install -e .
-pip install git+https://github.com/openai/CLIP.git   # CLIP from source
-
-# 3. Set secrets
-cp .env.example .env
-# → Fill in PINECONE_API_KEY and PINECONE_INDEX_NAME
-
-# 4. Install spaCy language model
+pip install git+https://github.com/openai/CLIP.git
 python -m spacy download en_core_web_sm
+```
 
-# 5. Build the index (1000 images for dev)
-./scripts/build_index.sh
+### 4. Configure Secrets
+The application requires a Pinecone API key to store and retrieve vectors.
+1. Sign up at [Pinecone](https://www.pinecone.io/) and create a serverless index with **512 dimensions** and **cosine metric**.
+2. Copy the `.env.example` file to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+3. Open `.env` and fill in your API key and the index name. By default, the system looks for an index named `fashion-retrieval`.
 
-# 6. Launch the demo
+### 5. Build the Vector Index and Thumbnail Cache
+The indexer will download images from the Fashionpedia dataset, extract embeddings, and push them to Pinecone. 
+
+```bash
+# Index 5000 images (recommended for good search results)
+python3 -m part_a_indexer.index --subset 5000
+
+# Build local thumbnail cache for fast, offline UI rendering
+python3 scripts/build_thumbnails.py
+```
+*(Note: Since the public COCO image CDN is incomplete, `build_thumbnails.py` generates a local `thumbnails.json` cache so images always load reliably in the UI.)*
+
+### 6. Launch the Application
+Start the interactive Streamlit dashboard:
+```bash
 streamlit run demo/app.py
 ```
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture Overview
 
-```
+The system is split into two primary components: the offline indexer (Part A) and the online retriever (Part B).
+
+```text
 USER QUERY (natural language)
         │
         ▼
 ┌──────────────────────┐
-│   QueryDecomposer    │  ← dict-based, no ML required
+│   QueryDecomposer    │  ← SpaCy NLP, zero-shot entity extraction
 └──────────┬───────────┘
            │
      ┌─────┴──────┐
@@ -54,7 +83,7 @@ USER QUERY (natural language)
      └──────┬───────┘
             ▼
     ┌───────────────┐
-    │    Pinecone   │  ← 512-D cosine search
+    │    Pinecone   │  ← 512-D dual-namespace cosine search
     └───────┬───────┘
             ▼
     ┌───────────────┐
@@ -62,23 +91,27 @@ USER QUERY (natural language)
     └───────┬───────┘
             ▼
     ┌───────────────┐
-    │ ResultRanker  │  ← hard constraints + diversity
+    │ ResultRanker  │  ← hard constraints + diversity grouping
     └───────────────┘
 ```
 
-### Scoring Weights
+### The "Fashion Attribute Pyramid" Scoring System
+Results are ranked using a composite score based on three pillars:
+1. **Semantic (50%)**: Global contextual match using OpenAI's CLIP (`ViT-B/32`).
+2. **Fashion (30%)**: Domain-specific apparel match using `FashionCLIP`.
+3. **Attribute (20%)**: Explicit metadata matching (Color binding, setting, formality, clothing type).
 
-| Component | Weight | Description |
-|-----------|--------|-------------|
-| CLIP (ViT-B/32) | **50%** | Global scene/context |
-| FashionCLIP | **30%** | Fashion-domain fine-tuning |
-| Attribute match | **20%** | Color, clothing, setting, formality |
+### ❓ Why Not Just Vanilla CLIP?
+Vanilla CLIP fundamentally fails at fashion retrieval for a few key reasons:
+- ❌ **Compositionality blindness**: `"red tie + white shirt"` vs `"white tie + red shirt"` resolve to identical vectors in standard CLIP. Our `QueryDecomposer` fixes this by binding colors to specific items syntactically.
+- ❌ **Contextual ignorance**: It struggles to distinguish an office setting from a park. Our `AttributeMatcher` extracts explicit settings.
+- ❌ **Formality violations**: You might ask for a "formal suit" and get a casual blazer. Our system uses "Hard Constraint Filtering" to drop casual images entirely when formal queries are detected.
 
 ---
 
 ## 📦 Project Structure
 
-```
+```text
 Fashion-Search/
 ├── config.yaml                   # Centralized configuration
 ├── .env.example                  # Secrets template (copy → .env)
@@ -87,135 +120,57 @@ Fashion-Search/
 │
 ├── part_a_indexer/               # Offline indexing pipeline
 │   ├── index.py                  # Main orchestrator (CLI)
-│   ├── dataset_processor.py      # Image loading + Fashionpedia loader
+│   ├── dataset_processor.py      # Image loading + dataset caching
 │   ├── embedding_extractor.py    # CLIP + FashionCLIP embedding
 │   ├── attribute_extractor.py    # Zero-shot attribute extraction
-│   ├── vector_storage.py         # Pinecone interface
-│   ├── utils/
-│   │   ├── config_utils.py       # YAML + env loading
-│   │   ├── image_utils.py        # PIL helpers
-│   │   └── vector_utils.py       # L2, cosine, score combination
-│   └── tests/
+│   └── vector_storage.py         # Pinecone interface
 │
 ├── part_b_retriever/             # Online retrieval pipeline
 │   ├── retriever.py              # FashionRetriever orchestrator
-│   ├── query_processor.py        # QueryDecomposer
-│   ├── multi_vector_search.py    # Parallel CLIP + FashionCLIP search
+│   ├── query_processor.py        # QueryDecomposer (NLP parsing)
+│   ├── multi_vector_search.py    # Parallel Pinecone querying
 │   ├── attribute_matching.py     # AttributeMatcher
-│   ├── ranker.py                 # ResultRanker (diversity + hard filters)
-│   ├── utils/
-│   │   ├── dictionaries.py       # Color/clothing/setting vocabularies
-│   │   ├── explainability.py     # SearchResult + ExplainabilityEngine
-│   │   └── prompt_utils.py       # CLIP prompt builders
-│   └── tests/
+│   └── ranker.py                 # Diversity and constraint logic
 │
 ├── demo/                         # Streamlit UI
 │   ├── app.py                    # Entry point
-│   ├── pages/
-│   │   ├── 01_🔍_Search.py       # Main search interface
-│   │   ├── 02_📚_Examples.py     # Evaluation queries showcase
-│   │   └── 03_📊_About.py        # Architecture overview
+│   ├── thumbnails.json           # [Auto-generated] Base64 image cache
+│   ├── pages/                    
+│   │   ├── 01_Search.py          # Main search interface
+│   │   ├── 02_Examples.py        # Evaluation queries showcase
+│   │   └── 03_About.py           # Architecture overview
 │   └── components/
-│       ├── theme.py              # Green/gold/black CSS injection
-│       ├── result_card.py        # Result display card
-│       ├── search_box.py         # Query input component
-│       └── utils.py              # UI helpers
+│       ├── theme.py              # Custom CSS styling
+│       ├── result_card.py        # Result display component
+│       └── search_box.py         # Query input component
 │
-└── scripts/
-    ├── build_index.sh            # Indexing shell wrapper
-    └── evaluate.py               # Run 5 evaluation queries
+└── scripts/                      # Utility scripts
+    └── evaluate.py               # Run 5 core evaluation queries
 ```
 
 ---
 
-## 🔧 Configuration
+## 🔧 Configuration Options
 
-All configuration lives in [`config.yaml`](./config.yaml). Override individual values with environment variables in `.env`:
+Override values in `config.yaml` using `.env`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PINECONE_API_KEY` | — | **Required** — your Pinecone API key |
-| `PINECONE_INDEX_NAME` | `fashion-retrieval` | Index name to create/use |
-| `DATASET_SUBSET_SIZE` | `1000` | Images to index (50000 for production) |
-| `DEVICE` | `cuda` | `cuda` or `cpu` |
-| `LOG_LEVEL` | `INFO` | Logging verbosity |
-
----
-
-## 🔄 Part A — Indexer
-
-```bash
-# Dev subset (1000 images)
-python -m part_a_indexer.index --subset 1000
-
-# Production (50K images, resumable)
-python -m part_a_indexer.index --subset 50000 --resume
-
-# Dry run (extracts embeddings, no Pinecone writes)
-python -m part_a_indexer.index --subset 100 --dry-run
-```
-
-The indexer stores for each image:
-- **Primary vector**: CLIP global embedding (512-D)
-- **Metadata**: FashionCLIP embedding, scene embedding, colors, clothing items, formality score, setting, style category
-
----
-
-## 🔍 Part B — Retriever
-
-```python
-from part_b_retriever.retriever import FashionRetriever
-
-retriever = FashionRetriever()
-results = retriever.search("A red tie and white shirt in a formal office", top_k=10)
-
-for r in results:
-    print(f"#{results.index(r)+1} {r.image_id}: {r.overall_score:.3f}")
-    print(f"  {r.explanation}")
-```
+| `PINECONE_INDEX_NAME` | `fashion-retrieval` | Target index name |
+| `DATASET_SUBSET_SIZE` | `5000` | Number of images to index |
+| `DEVICE` | `cpu` | Use `cpu` for M1/M2 Macs, `cuda` for Nvidia |
 
 ---
 
 ## 🧪 Testing
 
+The codebase maintains a 91-test suite with full mock coverage (no Pinecone or GPU required).
+
 ```bash
-# All tests (no GPU required — uses mocks)
+# Run all tests
 pytest -v --tb=short
 
-# Part A tests only
-pytest part_a_indexer/tests/ -v
-
-# Part B tests only  
-pytest part_b_retriever/tests/ -v
-
-# Run evaluation queries
+# Run end-to-end evaluation queries
 python scripts/evaluate.py --top-k 10
 ```
-
----
-
-## 🎨 Demo UI
-
-```bash
-streamlit run demo/app.py
-```
-
-Features:
-- **Search page** — natural language query with results in 2-column grid
-- **Examples page** — all 5 evaluation queries with descriptions
-- **About page** — architecture diagram and scoring explanation
-
----
-
-## ❓ Why Not Just CLIP?
-
-Vanilla CLIP fails at:
-- ❌ `"red tie + white shirt"` vs `"white tie + red shirt"` — treats as same vector
-- ❌ Fashion-specific nuances (blazer collar style, formality)  
-- ❌ Contextual awareness (office vs park)
-
-Our system solves these with:
-- ✅ `QueryDecomposer` — binds colors to specific items
-- ✅ `AttributeMatcher` — explicit metadata filtering  
-- ✅ FashionCLIP — fashion-domain fine-tuned embedding
-- ✅ Hard constraint filtering — enforces formality requirements

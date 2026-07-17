@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from part_a_indexer.attribute_extractor import AttributeExtractor
-from part_a_indexer.dataset_processor import ImageProcessor, load_fashionpedia
+from part_a_indexer.dataset_processor import ImageProcessor, load_ashraq_dataset
 from part_a_indexer.embedding_extractor import EmbeddingExtractor
 from part_a_indexer.utils.config_utils import configure_logging, get_env_var, load_config
 from part_a_indexer.utils.image_utils import path_to_id
@@ -147,9 +147,9 @@ def build_index(
     total_processed = checkpoint["processed"]
 
     # ── Load dataset ─────────────────────────────────────────
-    images, metadata_list = load_fashionpedia(subset_size=subset_size)
+    images, metadata_list = load_ashraq_dataset(subset_size=subset_size)
     total_images = len(images)
-    logger.info("Loaded %d images from Fashionpedia.", total_images)
+    logger.info("Loaded %d images from Ashraq dataset.", total_images)
 
     # ── Initialise components ─────────────────────────────────
     device = os.environ.get("DEVICE", config.get("models", {}).get("clip", {}).get("device", "cpu"))
@@ -216,7 +216,7 @@ def build_index(
                     "metadata": {
                         "image_id": image_id,
                         **attrs[i],
-                        "source": src_meta.get("source", "fashionpedia"),
+                        "source": src_meta.get("source", "ashraq_fashion_products"),
                     }
                 }
                 fashion_records.append(record)

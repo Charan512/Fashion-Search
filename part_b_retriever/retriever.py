@@ -67,7 +67,7 @@ class FashionRetriever:
         semantic_weight: float = 0.5,
         fashion_weight: float = 0.3,
         attribute_weight: float = 0.2,
-        confidence_threshold: float = 0.30,
+        confidence_threshold: float = 0.15,
         diversity_enabled: bool = True,
         hard_constraints: bool = True,
     ) -> None:

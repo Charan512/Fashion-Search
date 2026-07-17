@@ -61,13 +61,13 @@ def render_search_box() -> Tuple[str, int, bool]:
         search_clicked = st.button(
             "Search",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             key="search_button",
         )
 
     with col_clear:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Clear", use_container_width=True, key="clear_button"):
+        if st.button("Clear", width="stretch", key="clear_button"):
             st.session_state.pop("search_query", None)
             st.rerun()
 
@@ -86,6 +86,6 @@ def render_example_chips() -> None:
     for i, (col, query) in enumerate(zip(cols, EXAMPLE_QUERIES)):
         with col:
             short = query[:30] + "…" if len(query) > 30 else query
-            if st.button(short, key=f"example_{i}", use_container_width=True):
+            if st.button(short, key=f"example_{i}", width="stretch"):
                 st.session_state["search_query"] = query
                 st.rerun()
