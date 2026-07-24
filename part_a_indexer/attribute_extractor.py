@@ -83,13 +83,7 @@ class AttributeExtractor:
 
         self._clip_model = None
         self._clip_preprocess = None
-
-        # Pre-compute text features once (cached after first call)
-        self._color_text_features: Optional[torch.Tensor] = None
-        self._clothing_text_features: Optional[torch.Tensor] = None
-        self._setting_text_features: Optional[torch.Tensor] = None
-        self._style_text_features: Optional[torch.Tensor] = None
-        self._formality_text_features: Optional[torch.Tensor] = None
+        self._text_cache: Dict[tuple, torch.Tensor] = {}
 
         logger.info("AttributeExtractor initialised (device=%s)", self.device)
 
@@ -120,52 +114,22 @@ class AttributeExtractor:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def extract_colors(self, image: Image.Image) -> List[Tuple[str, float]]:
-        """Predict clothing colors present in the image.
-
-        Uses CLIP prompts: ``"This clothing contains {color}"``.
-
-        Args:
-            image: RGB PIL Image.
-
-        Returns:
-            Up to 3 ``(color_name, confidence)`` tuples, sorted by
-            confidence descending. Only colors above the threshold
-            are returned.
-        """
+    def extract_colors(self, image: Optional[Image.Image] = None, image_features: Optional[torch.Tensor] = None) -> List[Tuple[str, float]]:
+        """Predict clothing colors present in the image."""
         prompts = [f"This clothing contains the color {c}" for c in COLOR_NAMES]
-        scores = self._score_prompts(image, prompts)
+        scores = self._score_prompts_fast(image, image_features, prompts)
         return self._top_labels(COLOR_NAMES, scores, top_k=3)
 
-    def extract_clothing_items(self, image: Image.Image) -> List[Tuple[str, float]]:
-        """Detect clothing items present in the image.
-
-        Uses CLIP prompts: ``"This person is wearing a {item}"``.
-
-        Args:
-            image: RGB PIL Image.
-
-        Returns:
-            Up to 5 ``(clothing_item, confidence)`` tuples.
-        """
+    def extract_clothing_items(self, image: Optional[Image.Image] = None, image_features: Optional[torch.Tensor] = None) -> List[Tuple[str, float]]:
+        """Detect clothing items present in the image."""
         prompts = [f"This person is wearing a {item}" for item in CLOTHING_ITEMS]
-        scores = self._score_prompts(image, prompts)
+        scores = self._score_prompts_fast(image, image_features, prompts)
         return self._top_labels(CLOTHING_ITEMS, scores, top_k=5)
 
-    def score_formality(self, image: Image.Image) -> float:
-        """Predict how formal the outfit in the image is.
-
-        Compares image to formal vs casual prompt sets and returns
-        a continuous score in ``[0, 1]``.
-
-        Args:
-            image: RGB PIL Image.
-
-        Returns:
-            Formality score: 0.0 = very casual, 1.0 = very formal.
-        """
+    def score_formality(self, image: Optional[Image.Image] = None, image_features: Optional[torch.Tensor] = None) -> float:
+        """Predict how formal the outfit in the image is."""
         all_prompts = FORMALITY_FORMAL_PROMPTS + FORMALITY_CASUAL_PROMPTS
-        scores = self._score_prompts(image, all_prompts)
+        scores = self._score_prompts_fast(image, image_features, all_prompts)
 
         n_formal = len(FORMALITY_FORMAL_PROMPTS)
         formal_score = float(scores[:n_formal].mean())
@@ -175,59 +139,31 @@ class AttributeExtractor:
         total = formal_score + casual_score + 1e-10
         return round(formal_score / total, 4)
 
-    def classify_setting(self, image: Image.Image) -> str:
-        """Classify the location/setting of the image.
-
-        Args:
-            image: RGB PIL Image.
-
-        Returns:
-            The most likely setting label (e.g., ``"indoor_office"``).
-        """
+    def classify_setting(self, image: Optional[Image.Image] = None, image_features: Optional[torch.Tensor] = None) -> str:
+        """Classify the location/setting of the image."""
         prompts = [f"A photo taken at {s}" for s in SETTINGS]
-        scores = self._score_prompts(image, prompts)
+        scores = self._score_prompts_fast(image, image_features, prompts)
         best_idx = int(np.argmax(scores))
         raw = SETTINGS[best_idx]
         return raw.replace(" ", "_")
 
-    def classify_style(self, image: Image.Image) -> str:
-        """Classify the overall fashion style of the image.
-
-        Args:
-            image: RGB PIL Image.
-
-        Returns:
-            Style category (e.g., ``"business_formal"`` or ``"casual"``).
-        """
+    def classify_style(self, image: Optional[Image.Image] = None, image_features: Optional[torch.Tensor] = None) -> str:
+        """Classify the overall fashion style of the image."""
         prompts = [f"This is a {s} fashion look" for s in STYLE_CATEGORIES]
-        scores = self._score_prompts(image, prompts)
+        scores = self._score_prompts_fast(image, image_features, prompts)
         best_idx = int(np.argmax(scores))
         return STYLE_CATEGORIES[best_idx].replace(" ", "_")
 
     def extract_all_attributes(self, image: Image.Image) -> Dict:
-        """Extract all attributes from a single image.
+        """Extract all attributes from a single image optimally."""
+        # Calculate image features exactly ONCE per image.
+        image_features = self._get_image_features(image)
 
-        Runs color, clothing, formality, setting, and style extraction
-        in a single call.
-
-        Args:
-            image: RGB PIL Image.
-
-        Returns:
-            Dict with the following keys:
-
-            - ``primary_colors``: List[str] — top 2 colors
-            - ``secondary_colors``: List[str] — remaining colors
-            - ``clothing_items``: List[str] — detected garments
-            - ``formality_score``: float — 0.0–1.0
-            - ``setting``: str — location label
-            - ``style_category``: str — style label
-        """
-        colors = self.extract_colors(image)
-        clothing = self.extract_clothing_items(image)
-        formality = self.score_formality(image)
-        setting = self.classify_setting(image)
-        style = self.classify_style(image)
+        colors = self.extract_colors(image_features=image_features)
+        clothing = self.extract_clothing_items(image_features=image_features)
+        formality = self.score_formality(image_features=image_features)
+        setting = self.classify_setting(image_features=image_features)
+        style = self.classify_style(image_features=image_features)
 
         color_names = [c for c, _ in colors]
         primary_colors = color_names[:2]
@@ -244,37 +180,47 @@ class AttributeExtractor:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _score_prompts(
-        self, image: Image.Image, prompts: List[str]
-    ) -> np.ndarray:
-        """Compute normalised CLIP similarity scores for a list of prompts.
-
-        Args:
-            image: RGB PIL Image.
-            prompts: Text prompts to score.
-
-        Returns:
-            Float32 numpy array of shape ``(len(prompts),)``
-            with values in ``[0, 1]`` (softmax-normalised).
-        """
-        import clip
-
+    def _get_image_features(self, image: Image.Image) -> torch.Tensor:
+        """Compute and normalise image features from the vision transformer."""
         with torch.no_grad():
-            # Image features
             image_input = self.clip_preprocess(image).unsqueeze(0).to(self.device)
             image_features = self.clip_model.encode_image(image_input)
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        return image_features
 
-            # Text features
-            text_tokens = clip.tokenize(prompts, truncate=True).to(self.device)
-            text_features = self.clip_model.encode_text(text_tokens)
-            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+    def _get_text_features(self, prompts: List[str]) -> torch.Tensor:
+        """Compute and cache text features from the text transformer."""
+        cache_key = tuple(prompts)
+        if cache_key not in self._text_cache:
+            import clip
+            with torch.no_grad():
+                text_tokens = clip.tokenize(prompts, truncate=True).to(self.device)
+                text_features = self.clip_model.encode_text(text_tokens)
+                text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+                self._text_cache[cache_key] = text_features
+        return self._text_cache[cache_key]
 
+    def _score_prompts_fast(
+        self, image: Optional[Image.Image], image_features: Optional[torch.Tensor], prompts: List[str]
+    ) -> np.ndarray:
+        """Compute normalised CLIP similarity scores extremely efficiently."""
+        if image_features is None:
+            if image is None:
+                raise ValueError("Either image or image_features must be provided")
+            image_features = self._get_image_features(image)
+            
+        text_features = self._get_text_features(prompts)
+        
+        with torch.no_grad():
             # Cosine similarity → softmax scores
             logits = (image_features @ text_features.T) * 100.0  # scale like CLIP paper
             probs = torch.softmax(logits, dim=-1)[0]
 
         return probs.cpu().float().numpy()
+
+    def _score_prompts(self, image: Image.Image, prompts: List[str]) -> np.ndarray:
+        """Legacy method for backward compatibility."""
+        return self._score_prompts_fast(image, None, prompts)
 
     def _top_labels(
         self,
@@ -282,16 +228,7 @@ class AttributeExtractor:
         scores: np.ndarray,
         top_k: int = 3,
     ) -> List[Tuple[str, float]]:
-        """Return the top-k (label, score) pairs above the threshold.
-
-        Args:
-            labels: Label strings corresponding to *scores*.
-            scores: Probability array aligned with *labels*.
-            top_k: Maximum number of results.
-
-        Returns:
-            Sorted list of ``(label, score)`` tuples.
-        """
+        """Return the top-k (label, score) pairs above the threshold."""
         indices = np.argsort(scores)[::-1][:top_k]
         result = []
         for idx in indices:
