@@ -1,3 +1,14 @@
+---
+title: Fashion Retrieval System
+emoji: 👗
+colorFrom: pink
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.35.0
+app_file: demo/app.py
+pinned: false
+---
+
 # Fashion Retrieval System
 
 > **Multi-vector fashion image search using CLIP + FashionCLIP + zero-shot attribute decomposition**
