@@ -1,12 +1,3 @@
----
-title: Fashion Retrieval System
-emoji: 👗
-colorFrom: pink
-colorTo: indigo
-sdk: docker
-pinned: false
----
-
 # Fashion Retrieval System
 
 > **Multi-vector fashion image search using CLIP + FashionCLIP + zero-shot attribute decomposition**
