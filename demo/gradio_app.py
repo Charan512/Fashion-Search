@@ -776,8 +776,15 @@ USER QUERY (natural language)
 # ── Gradio Blocks app ─────────────────────────────────────────────────────────
 
 def build_app() -> gr.Blocks:
+    theme = gr.themes.Base(
+        primary_hue="green",
+        neutral_hue="slate",
+        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui"],
+    )
     with gr.Blocks(
         title="Fashion Retrieval System",
+        css=CUSTOM_CSS,
+        theme=theme,
     ) as demo:
 
         # ── Hero header ───────────────────────────────────────────────────────
@@ -944,11 +951,4 @@ if __name__ == "__main__":
         server_name="0.0.0.0",
         server_port=7860,
         show_error=True,
-        favicon_path=None,
-        css=CUSTOM_CSS,
-        theme=gr.themes.Base(
-            primary_hue="green",
-            neutral_hue="slate",
-            font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui"],
-        ),
     )
