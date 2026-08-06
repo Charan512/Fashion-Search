@@ -682,16 +682,18 @@ def _about_tab_html() -> str:
         ("Casual weekend outfit for a city walk", False),
         ("A red tie and a white shirt in a formal setting", True),
     ]
-    query_rows = "".join(
-        f'<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;'
-        f'margin-bottom:6px;background:#1a1a1a;border-radius:8px;'
-        f'border-left:3px solid {ACCENT_GOLD if is_core else PRIMARY_GREEN};">'
-        f'<span style="color:{ACCENT_GOLD};font-weight:700;min-width:20px;">#{i}</span>'
-        f'<span style="font-family:monospace;color:#ccc;font-size:0.88rem;">{q}</span>'
-        f'{"<span style=\"color:" + ERROR_RED + ";font-size:0.72rem;font-weight:700;\">CORE</span>" if is_core else ""}'
-        f'</div>'
-        for i, (q, is_core) in enumerate(queries, 1)
-    )
+    def _query_row(i: int, q: str, is_core: bool) -> str:
+        core_badge = f"<span style='color:{ERROR_RED};font-size:0.72rem;font-weight:700;'>CORE</span>" if is_core else ""
+        return (
+            f'<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;'
+            f'margin-bottom:6px;background:#1a1a1a;border-radius:8px;'
+            f'border-left:3px solid {ACCENT_GOLD if is_core else PRIMARY_GREEN};">'
+            f'<span style="color:{ACCENT_GOLD};font-weight:700;min-width:20px;">#{i}</span>'
+            f'<span style="font-family:monospace;color:#ccc;font-size:0.88rem;">{q}</span>'
+            f'{core_badge}</div>'
+        )
+    
+    query_rows = "".join(_query_row(i, q, is_core) for i, (q, is_core) in enumerate(queries, 1))
 
     scoring_cols = f"""
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:2rem;">
