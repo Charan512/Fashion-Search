@@ -32,8 +32,9 @@ python-dotenv>=1.0.0
 # Retry logic
 tenacity>=8.2.0
 
-# Gradio UI
+# Gradio UI & Hugging Face
 gradio>=4.0.0
+spaces
 
 # Testing
 pytest>=7.4.0

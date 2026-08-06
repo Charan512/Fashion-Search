@@ -22,6 +22,17 @@ from typing import Any, Dict, List, Optional
 
 import gradio as gr
 
+try:
+    import spaces
+    has_spaces = True
+except ImportError:
+    has_spaces = False
+
+def bypass_gpu(func):
+    return func
+
+gpu_decorator = spaces.GPU if has_spaces else bypass_gpu
+
 # Ensure project root is on Python path
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
@@ -569,6 +580,7 @@ def _build_decomp_html(components: Dict) -> str:
 
 # ── Search function (called by Gradio event) ──────────────────────────────────
 
+@gpu_decorator
 def run_search(query: str, top_k: int, show_decomp: bool):
     """Main search handler wired to the Gradio submit event.
 
