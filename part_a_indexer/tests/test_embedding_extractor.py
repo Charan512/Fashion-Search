@@ -101,12 +101,13 @@ class TestEmbeddingExtractor:
     def test_fashion_clip_fallback_when_unavailable(self, dummy_images):
         """FashionCLIP returns zero array when model failed to load."""
         extractor = self._make_extractor()
-        extractor._fashion_model = None
-        extractor._fashion_processor = None
+        with patch.object(extractor, "_load_fashion_clip"):
+            extractor._fashion_model = None
+            extractor._fashion_processor = None
 
-        result = extractor.extract_fashion_clip_embeddings(dummy_images)
-        assert result.shape == (4, 512)
-        np.testing.assert_array_equal(result, 0.0)
+            result = extractor.extract_fashion_clip_embeddings(dummy_images)
+            assert result.shape == (4, 512)
+            np.testing.assert_array_equal(result, 0.0)
 
     def test_batch_extract_all_returns_dict(self, dummy_images):
         """batch_extract_all returns dict with all three keys."""

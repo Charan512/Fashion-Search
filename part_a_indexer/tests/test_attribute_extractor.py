@@ -49,7 +49,7 @@ def _make_extractor_with_mock_clip(top_score_index: int = 0) -> AttributeExtract
         n = tokens.shape[0]
         scores = torch.zeros(n)
         scores[top_score_index % n] = 10.0  # make one score dominant
-        return scores.unsqueeze(0).expand(n, 512)
+        return scores.unsqueeze(1).expand(n, 512)
 
     mock_model.encode_image = mock_encode_image
     mock_model.encode_text = mock_encode_text
@@ -67,12 +67,12 @@ class TestAttributeExtractor:
         """extract_colors returns a list of (str, float) tuples."""
         extractor = _make_extractor_with_mock_clip(top_score_index=0)
 
-        # Patch _score_prompts to return deterministic probabilities
+        # Patch _score_prompts_fast to return deterministic probabilities
         probs = np.zeros(len(COLOR_NAMES), dtype=np.float32)
         probs[0] = 0.9  # first color = red
         probs[1] = 0.7  # second = blue
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             result = extractor.extract_colors(dummy_image)
 
         assert isinstance(result, list)
@@ -86,7 +86,7 @@ class TestAttributeExtractor:
         extractor = _make_extractor_with_mock_clip()
         probs = np.ones(len(COLOR_NAMES), dtype=np.float32) * 0.9
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             result = extractor.extract_colors(dummy_image)
 
         assert len(result) <= 3
@@ -96,7 +96,7 @@ class TestAttributeExtractor:
         extractor = _make_extractor_with_mock_clip()
         probs = np.random.uniform(0, 1, 10).astype(np.float32)
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             score = extractor.score_formality(dummy_image)
 
         assert 0.0 <= score <= 1.0
@@ -106,7 +106,7 @@ class TestAttributeExtractor:
         extractor = _make_extractor_with_mock_clip()
         probs = np.random.uniform(0, 1, len(SETTINGS)).astype(np.float32)
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             result = extractor.classify_setting(dummy_image)
 
         assert isinstance(result, str)
@@ -118,7 +118,7 @@ class TestAttributeExtractor:
         probs = np.zeros(len(STYLE_CATEGORIES), dtype=np.float32)
         probs[2] = 1.0  # index 2 = "casual"
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             result = extractor.classify_style(dummy_image)
 
         # Underscored version of a style category
@@ -129,13 +129,14 @@ class TestAttributeExtractor:
         """extract_all_attributes returns dict with all required keys."""
         extractor = _make_extractor_with_mock_clip()
 
-        def mock_score(img, prompts):
+        def mock_score(*args, **kwargs):
+            prompts = kwargs.get('prompts') or args[-1]
             n = len(prompts)
             probs = np.zeros(n, dtype=np.float32)
             probs[0] = 0.8
             return probs
 
-        with patch.object(extractor, "_score_prompts", side_effect=mock_score):
+        with patch.object(extractor, "_score_prompts_fast", side_effect=mock_score):
             attrs = extractor.extract_all_attributes(dummy_image)
 
         required_keys = {
@@ -158,7 +159,7 @@ class TestAttributeExtractor:
             [0.9] * n_formal + [0.1] * n_casual, dtype=np.float32
         )
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             score = extractor.score_formality(dummy_image)
 
         assert score > 0.5
@@ -169,7 +170,7 @@ class TestAttributeExtractor:
 
         probs = np.array([0.3, 0.2, 0.1] + [0.0] * (len(COLOR_NAMES) - 3), dtype=np.float32)
 
-        with patch.object(extractor, "_score_prompts", return_value=probs):
+        with patch.object(extractor, "_score_prompts_fast", return_value=probs):
             result = extractor.extract_colors(dummy_image)
 
         # All scores are below threshold=0.5 → empty list
