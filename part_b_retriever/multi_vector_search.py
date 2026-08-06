@@ -15,6 +15,12 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    before_sleep_log,
+)
 
 from part_a_indexer.embedding_extractor import EmbeddingExtractor
 from part_a_indexer.vector_storage import VectorStore
@@ -123,13 +129,23 @@ class MultiVectorSearch:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=1, max=15),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def _query_pinecone(
         self,
         embedding: np.ndarray,
-        filters: Optional[Dict],
+        filters: Optional[Dict[str, Any]] = None,
         namespace: str = "",
     ) -> List[Dict[str, Any]]:
-        """Run a single Pinecone vector query.
+        """Run a single Pinecone vector query with automatic retry.
+
+        Retried up to 3 times with exponential backoff. Raises on
+        persistent failure so the caller receives a proper error
+        rather than silent empty results.
 
         Args:
             embedding: Query vector, shape ``(512,)``.
@@ -139,17 +155,13 @@ class MultiVectorSearch:
         Returns:
             List of Pinecone result dicts (id, score, metadata).
         """
-        try:
-            return self.vector_store.query_by_vector(
-                vector=embedding,
-                top_k=self.top_k_candidates,
-                filters=filters,
-                include_metadata=True,
-                namespace=namespace,
-            )
-        except Exception as exc:
-            logger.error("Pinecone query failed: %s", exc)
-            return []
+        return self.vector_store.query_by_vector(
+            vector=embedding,
+            top_k=self.top_k_candidates,
+            filters=filters,
+            include_metadata=True,
+            namespace=namespace,
+        )
 
     def _combine_results(
         self,

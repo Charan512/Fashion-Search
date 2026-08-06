@@ -10,10 +10,16 @@ Provides a clean interface to the Pinecone vector database for:
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+    before_sleep_log,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,18 +76,24 @@ class VectorStore:
             self._connect()
         return self._index
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def _connect(self) -> None:
-        """Initialise Pinecone client and connect to the index."""
-        try:
-            from pinecone import Pinecone, ServerlessSpec  # noqa: F401
+        """Initialise Pinecone client and connect to the index.
 
-            pc = Pinecone(api_key=self.api_key)
-            self._pc = pc
-            self._index = pc.Index(self.index_name)
-            logger.info("Connected to Pinecone index '%s'.", self.index_name)
-        except Exception as exc:
-            logger.error("Pinecone connection failed: %s", exc)
-            raise
+        Retried up to 3 times with exponential backoff to handle
+        transient network connectivity issues.
+        """
+        from pinecone import Pinecone, ServerlessSpec  # noqa: F401
+
+        pc = Pinecone(api_key=self.api_key)
+        self._pc = pc
+        self._index = pc.Index(self.index_name)
+        logger.info("Connected to Pinecone index '%s'.", self.index_name)
 
     def create_index_if_not_exists(self) -> None:
         """Create the Pinecone index if it does not already exist.
@@ -147,34 +159,21 @@ class VectorStore:
         total = len(records)
         uploaded = 0
 
+        @retry(
+            stop=stop_after_attempt(max_retries),
+            wait=wait_exponential(multiplier=2, min=2, max=30),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            reraise=True,
+        )
+        def _upsert_chunk(chunk: List[Dict[str, Any]]) -> None:
+            self.index.upsert(vectors=chunk, namespace=namespace)
+
         for start in range(0, total, batch_size):
             chunk = records[start : start + batch_size]
-            # Sanitise metadata: convert numpy arrays to lists
             sanitised = [self._sanitise_record(r) for r in chunk]
-
-            success = False
-            for attempt in range(1, max_retries + 1):
-                try:
-                    self.index.upsert(vectors=sanitised, namespace=namespace)
-                    uploaded += len(chunk)
-                    logger.debug("Upserted %d/%d vectors.", uploaded, total)
-                    success = True
-                    break
-                except Exception as exc:
-                    wait = 2 ** attempt
-                    logger.warning(
-                        "Upsert attempt %d/%d failed: %s — retrying in %ds.",
-                        attempt,
-                        max_retries,
-                        exc,
-                        wait,
-                    )
-                    time.sleep(wait)
-
-            if not success:
-                raise RuntimeError(
-                    f"Upsert failed after {max_retries} attempts for chunk starting at {start}."
-                )
+            _upsert_chunk(sanitised)
+            uploaded += len(chunk)
+            logger.debug("Upserted %d/%d vectors.", uploaded, total)
 
         logger.info("Upsert complete: %d vectors stored.", uploaded)
 

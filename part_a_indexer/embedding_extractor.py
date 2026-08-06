@@ -17,6 +17,14 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 from PIL import Image
+from tenacity import (
+    RetryError,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+    before_sleep_log,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,49 +93,62 @@ class EmbeddingExtractor:
             self._load_fashion_clip()
         return self._fashion_processor
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type((OSError, RuntimeError, Exception)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def _load_clip(self) -> None:
-        """Load OpenAI CLIP model and preprocessor."""
+        """Load OpenAI CLIP model and preprocessor.
+
+        Retried up to 3 times with exponential backoff to handle
+        transient network failures when downloading model weights.
+        """
         logger.info("Loading CLIP model (%s) on %s…", CLIP_MODEL_NAME, self.device)
-        try:
-            import clip  # openai/CLIP
-            model, preprocess = clip.load(CLIP_MODEL_NAME, device=self.device)
-            model.eval()
-            self._clip_model = model
-            self._clip_preprocess = preprocess
+        import clip  # openai/CLIP
+        model, preprocess = clip.load(CLIP_MODEL_NAME, device=self.device)
+        model.eval()
+        self._clip_model = model
+        self._clip_preprocess = preprocess
 
-            # Build a scene feature projection: 512 → 256
-            self._scene_projection = torch.nn.Linear(
-                EMBEDDING_DIM_CLIP, EMBEDDING_DIM_SCENE, bias=False
-            ).to(self.device)
-            # Initialise with fixed seed for reproducibility
-            torch.nn.init.xavier_uniform_(self._scene_projection.weight)
-            self._scene_projection.eval()
+        # Build a scene feature projection: 512 → 256
+        self._scene_projection = torch.nn.Linear(
+            EMBEDDING_DIM_CLIP, EMBEDDING_DIM_SCENE, bias=False
+        ).to(self.device)
+        # Initialise with fixed seed for reproducibility
+        torch.nn.init.xavier_uniform_(self._scene_projection.weight)
+        self._scene_projection.eval()
 
-            logger.info("CLIP loaded successfully.")
-        except Exception as exc:
-            logger.error("Failed to load CLIP: %s", exc)
-            raise
+        logger.info("CLIP loaded successfully.")
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type((OSError, RuntimeError, Exception)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def _load_fashion_clip(self) -> None:
-        """Load FashionCLIP model and processor from HuggingFace."""
+        """Load FashionCLIP model and processor from HuggingFace.
+
+        Retried up to 3 times with exponential backoff to handle
+        transient network failures when downloading model weights.
+        Raises on persistent failure — do NOT silently zero-fill, as
+        this would silently cripple search relevance.
+        """
         logger.info("Loading FashionCLIP (%s) on %s…", FASHION_CLIP_MODEL_NAME, self.device)
-        try:
-            from transformers import CLIPModel, CLIPProcessor
+        from transformers import CLIPModel, CLIPProcessor
 
-            model = CLIPModel.from_pretrained(FASHION_CLIP_MODEL_NAME)
-            processor = CLIPProcessor.from_pretrained(FASHION_CLIP_MODEL_NAME)
-            model = model.to(self.device)
-            model.eval()
+        model = CLIPModel.from_pretrained(FASHION_CLIP_MODEL_NAME)
+        processor = CLIPProcessor.from_pretrained(FASHION_CLIP_MODEL_NAME)
+        model = model.to(self.device)
+        model.eval()
 
-            self._fashion_model = model
-            self._fashion_processor = processor
-            logger.info("FashionCLIP loaded successfully.")
-        except Exception as exc:
-            logger.warning(
-                "FashionCLIP load failed: %s — FashionCLIP embeddings will be zero-filled.", exc
-            )
-            self._fashion_model = None
-            self._fashion_processor = None
+        self._fashion_model = model
+        self._fashion_processor = processor
+        logger.info("FashionCLIP loaded successfully.")
 
     # ── Public extraction API ─────────────────────────────────────────────────
 
