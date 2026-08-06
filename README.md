@@ -1,3 +1,14 @@
+---
+title: Fashion Retrieval
+emoji: 👕
+colorFrom: green
+colorTo: yellow
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+---
+
 # Fashion Retrieval System
 
 > **Multi-vector fashion image search using CLIP + FashionCLIP + zero-shot attribute decomposition**
