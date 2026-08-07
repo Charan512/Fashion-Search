@@ -156,255 +156,162 @@ def _get_retriever():
 
 # ── HTML helpers ──────────────────────────────────────────────────────────────
 
-CUSTOM_CSS = f"""
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+CUSTOM_CSS = """
 
-:root {{
-    --primary-green: {PRIMARY_GREEN};
-    --accent-gold:   {ACCENT_GOLD};
-    --dark-bg:       {DARK_BG};
-    --dark-secondary:{DARK_SECONDARY};
-    --dark-card:     {DARK_CARD};
-    --text-white:    {TEXT_WHITE};
-    --text-muted:    {TEXT_MUTED};
-    --border-gold:   {BORDER_GOLD};
-}}
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-body, .gradio-container, .gr-block {{
-    font-family: 'Inter', sans-serif !important;
-    background: linear-gradient(135deg, {DARK_BG} 0%, #111111 100%) !important;
-    color: {TEXT_WHITE} !important;
-}}
+:root {
+    --bg-base: #0f172a;
+    --bg-surface: rgba(30, 41, 59, 0.7);
+    --border-glow: rgba(56, 189, 248, 0.3);
+    --accent-primary: #38bdf8;
+    --accent-secondary: #818cf8;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+}
 
-/* Headings */
-h1, h2, h3 {{
-    color: {PRIMARY_GREEN} !important;
+body, .gradio-container, .gr-block {
+    font-family: 'Outfit', sans-serif !important;
+    background: radial-gradient(circle at top right, #1e1b4b 0%, var(--bg-base) 100%) !important;
+    color: var(--text-main) !important;
+}
+
+/* Glassmorphism Cards */
+.result-card, .search-hero, .metric-card {
+    background: var(--bg-surface) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.result-card:hover {
+    transform: translateY(-4px) scale(1.01) !important;
+    border-color: var(--border-glow) !important;
+    box-shadow: 0 12px 40px rgba(56, 189, 248, 0.2) !important;
+}
+
+/* Gradients for text */
+h1, h2, h3 {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     font-weight: 700 !important;
     letter-spacing: -0.02em;
-}}
+}
 
-h4, h5, h6 {{
-    color: {ACCENT_GOLD} !important;
-    font-weight: 600 !important;
-}}
+/* Inputs & Textareas */
+textarea, input[type="text"], input[type="number"] {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    color: var(--text-main) !important;
+    font-family: 'Outfit', sans-serif !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+    transition: all 0.3s ease !important;
+}
 
-/* Tabs */
-.tab-nav button {{
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 600 !important;
-    color: {TEXT_MUTED} !important;
-    border-radius: 8px 8px 0 0 !important;
-    transition: all 0.2s ease !important;
-}}
-
-.tab-nav button.selected {{
-    color: {PRIMARY_GREEN} !important;
-    border-bottom: 2px solid {PRIMARY_GREEN} !important;
-}}
-
-/* Inputs */
-textarea, input[type="text"], input[type="number"] {{
-    background-color: {DARK_CARD} !important;
-    color: {TEXT_WHITE} !important;
-    border: 1px solid {BORDER_GOLD} !important;
-    border-radius: 8px !important;
-    font-family: 'Inter', sans-serif !important;
-}}
-
-textarea:focus, input:focus {{
-    border-color: {PRIMARY_GREEN} !important;
-    box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2) !important;
-}}
+textarea:focus, input:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2), inset 0 2px 4px rgba(0,0,0,0.2) !important;
+}
 
 /* Buttons */
-.gr-button-primary, button.primary {{
-    background: linear-gradient(135deg, {PRIMARY_GREEN}, #27AE60) !important;
-    color: #000 !important;
+.gr-button-primary, button.primary {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+    color: #fff !important;
     border: none !important;
-    border-radius: 10px !important;
-    font-weight: 700 !important;
-    padding: 0.6rem 1.4rem !important;
-    transition: all 0.25s ease !important;
-    box-shadow: 0 4px 15px rgba(46,204,113,0.3) !important;
-}}
-
-.gr-button-primary:hover, button.primary:hover {{
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 25px rgba(46,204,113,0.5) !important;
-}}
-
-button.secondary {{
-    background: {DARK_CARD} !important;
-    color: {ACCENT_GOLD} !important;
-    border: 1px solid {BORDER_GOLD} !important;
-    border-radius: 8px !important;
+    border-radius: 12px !important;
     font-weight: 600 !important;
-    transition: all 0.2s ease !important;
-}}
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    padding: 0.8rem 1.6rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4) !important;
+}
 
-button.secondary:hover {{
-    border-color: {PRIMARY_GREEN} !important;
-    color: {PRIMARY_GREEN} !important;
-}}
+.gr-button-primary:hover, button.primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(129, 140, 248, 0.6) !important;
+}
 
-/* Result cards */
-.result-card {{
-    background: {DARK_CARD};
-    border: 1px solid {BORDER_GOLD};
-    border-radius: 12px;
-    padding: 1.2rem;
-    margin-bottom: 1rem;
-    transition: all 0.3s ease;
-}}
+/* Tabs */
+.tab-nav button {
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 500 !important;
+    color: var(--text-muted) !important;
+    border-radius: 12px 12px 0 0 !important;
+    transition: all 0.3s ease !important;
+    background: transparent !important;
+    border: none !important;
+}
 
-.result-card:hover {{
-    border-color: {PRIMARY_GREEN};
-    box-shadow: 0 4px 20px rgba(46, 204, 113, 0.15);
-    transform: translateY(-2px);
-}}
+.tab-nav button.selected {
+    color: var(--accent-primary) !important;
+    background: rgba(255,255,255,0.05) !important;
+    border-bottom: 2px solid var(--accent-primary) !important;
+}
 
 /* Score bars */
-.score-bar-container {{
-    background: #333;
-    border-radius: 4px;
-    height: 6px;
-    margin: 4px 0 8px;
-}}
+.score-bar-container {
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    height: 8px;
+    margin: 6px 0 10px;
+    overflow: hidden;
+}
 
-.score-bar-fill {{
-    height: 6px;
-    border-radius: 4px;
-    background: linear-gradient(90deg, {PRIMARY_GREEN}, {ACCENT_GOLD});
-    transition: width 0.4s ease;
-}}
+.score-bar-fill {
+    height: 8px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
 
-/* Attribute badges */
-.attr-badge {{
+/* Badges */
+.attr-badge {
     display: inline-block;
-    background: rgba(46, 204, 113, 0.15);
-    border: 1px solid {PRIMARY_GREEN};
-    color: {PRIMARY_GREEN};
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: var(--accent-primary);
     border-radius: 20px;
-    padding: 2px 10px;
+    padding: 4px 12px;
     font-size: 0.75rem;
     font-weight: 600;
-    margin: 2px;
-}}
-
-.attr-badge-miss {{
-    background: rgba(192, 57, 43, 0.15);
-    border: 1px solid {ERROR_RED};
-    color: {ERROR_RED};
-}}
-
-/* Hero gradient panel */
-.search-hero {{
-    background: linear-gradient(135deg,
-        rgba(46,204,113,0.05) 0%,
-        rgba(243,156,18,0.05) 100%
-    );
-    border: 1px solid rgba(243,156,18,0.2);
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-}}
-
-/* HR */
-hr {{
-    border-color: {BORDER_GOLD} !important;
-    opacity: 0.4;
-}}
-
-/* Sliders */
-input[type=range] {{
-    accent-color: {ACCENT_GOLD};
-}}
-
-/* Accordion / details */
-details summary {{
-    color: {ACCENT_GOLD} !important;
-    font-weight: 600 !important;
-}}
-
-/* Example query chips */
-.example-chip {{
-    display: inline-block;
-    background: {DARK_CARD};
-    border: 1px solid {BORDER_GOLD};
-    color: {ACCENT_GOLD};
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 0.82rem;
-    font-weight: 500;
     margin: 3px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}}
+    backdrop-filter: blur(4px);
+}
 
-.example-chip:hover {{
-    border-color: {PRIMARY_GREEN};
-    color: {PRIMARY_GREEN};
-    background: rgba(46,204,113,0.08);
-}}
+.attr-badge-miss {
+    background: rgba(244, 63, 94, 0.1);
+    border-color: rgba(244, 63, 94, 0.3);
+    color: #f43f5e;
+}
 
-/* Metric cards */
-.metric-card {{
-    background: {DARK_SECONDARY};
-    border: 1px solid {BORDER_GOLD};
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-    margin-bottom: 0.5rem;
-}}
-
-.metric-value {{
-    font-size: 2.2rem;
-    font-weight: 800;
-    margin-bottom: 0.3rem;
-}}
-
-.metric-label {{
+/* Example Chips */
+.example-chip {
+    display: inline-block;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 6px 16px;
     font-size: 0.85rem;
-    color: {TEXT_MUTED};
-}}
+    font-weight: 500;
+    margin: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
 
-/* No results / error states */
-.no-results {{
-    text-align: center;
-    padding: 3rem;
-    color: {TEXT_MUTED};
-    font-size: 1rem;
-    background: {DARK_CARD};
-    border-radius: 12px;
-    border: 1px dashed {BORDER_GOLD};
-}}
+.example-chip:hover {
+    border-color: var(--accent-primary);
+    color: #fff;
+    background: rgba(56, 189, 248, 0.1);
+    transform: translateY(-1px);
+}
 
-/* Query decomposition debug box */
-.decomp-card {{
-    background: {DARK_SECONDARY};
-    border: 1px solid {BORDER_GOLD};
-    border-radius: 10px;
-    padding: 1rem;
-    margin-top: 0.5rem;
-}}
-
-/* Hero header */
-.hero-header {{
-    text-align: center;
-    padding: 2rem 1rem 1rem;
-}}
-
-.hero-header h1 {{
-    font-size: 2.6rem !important;
-    margin-bottom: 0.5rem;
-}}
-
-.hero-header p {{
-    color: {TEXT_MUTED};
-    font-size: 1rem;
-    max-width: 600px;
-    margin: 0 auto;
-}}
 """
 
 
@@ -545,7 +452,7 @@ def _build_decomp_html(components: Dict) -> str:
 
     return f"""
     <div class="decomp-card">
-      <h4 style="color:{ACCENT_GOLD};margin-top:0;font-size:0.95rem;">🔬 Query Decomposition</h4>
+      <h4 style="color:{ACCENT_GOLD};margin-top:0;font-size:0.95rem;">Query Decomposition</h4>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
         <div>
           <p style="font-weight:600;color:{TEXT_WHITE};font-size:0.85rem;margin-bottom:4px;">
@@ -590,7 +497,7 @@ def run_search(query: str, top_k: int, show_decomp: bool):
     query = (query or "").strip()
     if not query:
         return (
-            f'<div class="no-results">⚠️ Please enter a search query.</div>',
+            f'<div class="no-results">Please enter a search query.</div>',
             "",
         )
 
@@ -599,7 +506,7 @@ def run_search(query: str, top_k: int, show_decomp: bool):
     except Exception as exc:
         return (
             f'<div class="no-results" style="color:{ERROR_RED};">'
-            f'❌ Failed to load retriever: {exc}<br>'
+            f'Failed to load retriever: {exc}<br>'
             f'Make sure <code>PINECONE_API_KEY</code> is set and the index is populated.'
             f'</div>',
             "",
@@ -618,7 +525,7 @@ def run_search(query: str, top_k: int, show_decomp: bool):
         results = retriever.search(query, top_k=int(top_k))
     except Exception as exc:
         return (
-            f'<div class="no-results" style="color:{ERROR_RED};">❌ Search failed: {exc}</div>',
+            f'<div class="no-results" style="color:{ERROR_RED};">Search failed: {exc}</div>',
             decomp_html,
         )
 
@@ -627,7 +534,7 @@ def run_search(query: str, top_k: int, show_decomp: bool):
     if not results:
         return (
             f'<div class="no-results">'
-            f'🔍 No results found for <em>"{query}"</em>. Try a different query.'
+            f'No results found for <em>"{query}"</em>. Try a different query.'
             f'</div>',
             decomp_html,
         )
@@ -789,9 +696,9 @@ USER QUERY (natural language)
 
 def build_app() -> gr.Blocks:
     theme = gr.themes.Base(
-        primary_hue="green",
+        primary_hue="sky",
         neutral_hue="slate",
-        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui"],
+        font=[gr.themes.GoogleFont("Outfit"), "sans-serif"],
     )
     with gr.Blocks(
         title="Fashion Retrieval System",
@@ -814,7 +721,7 @@ def build_app() -> gr.Blocks:
         with gr.Tabs():
 
             # ── Search tab ────────────────────────────────────────────────────
-            with gr.TabItem("🔍 Search"):
+            with gr.TabItem("Search"):
 
                 # Quick-example chips (rendered as HTML buttons via JS)
                 def _build_chip(q: str) -> str:
@@ -856,7 +763,7 @@ def build_app() -> gr.Blocks:
                 with gr.Row():
                     search_btn = gr.Button("Search", variant="primary", size="lg")
                     clear_btn = gr.Button("Clear", variant="secondary", size="lg")
-                    decomp_toggle = gr.Checkbox(label="🔬 Show query decomposition", value=False)
+                    decomp_toggle = gr.Checkbox(label="Show query decomposition", value=False)
 
                 # Decomposition debug panel
                 decomp_output = gr.HTML(visible=True)
@@ -938,7 +845,7 @@ def build_app() -> gr.Blocks:
                                 example_run_btns.append((btn, eq["query"]))
 
             # ── About tab ─────────────────────────────────────────────────────
-            with gr.TabItem("ℹ️ About"):
+            with gr.TabItem("About"):
                 gr.HTML(_about_tab_html())
 
         # ── Footer ────────────────────────────────────────────────────────────

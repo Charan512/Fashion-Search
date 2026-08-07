@@ -73,6 +73,6 @@ htmlcov/
 
 # ── Generated build artifacts ─────────────────────────────────────────────────
 demo/coco_id_map.json
-demo/thumbnails.json
+# demo/thumbnails.json is intentionally tracked for HF Spaces
 scripts/
 INTERVIEW_QNA.md
