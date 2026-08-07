@@ -110,6 +110,7 @@ EVALUATION_QUERIES = [
 
 # ── Thumbnail cache ───────────────────────────────────────────────────────────
 _THUMB_PATH = Path(__file__).parent / "thumbnails.json"
+_THUMB_PATH_ROOT = Path(__file__).parent.parent / "thumbnails.json"
 _THUMBNAILS: Optional[Dict[str, str]] = None
 
 
@@ -118,8 +119,13 @@ def _get_thumbnails() -> Dict[str, str]:
     global _THUMBNAILS
     if _THUMBNAILS is None:
         if _THUMB_PATH.exists():
-            logger.info("Loading thumbnails.json …")
+            logger.info("Loading thumbnails.json from demo/ …")
             with open(_THUMB_PATH) as f:
+                _THUMBNAILS = json.load(f)
+            logger.info("Loaded %d thumbnails.", len(_THUMBNAILS))
+        elif _THUMB_PATH_ROOT.exists():
+            logger.info("Loading thumbnails.json from root …")
+            with open(_THUMB_PATH_ROOT) as f:
                 _THUMBNAILS = json.load(f)
             logger.info("Loaded %d thumbnails.", len(_THUMBNAILS))
         else:
