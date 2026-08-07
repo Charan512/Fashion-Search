@@ -723,25 +723,20 @@ def build_app() -> gr.Blocks:
             # ── Search tab ────────────────────────────────────────────────────
             with gr.TabItem("Search"):
 
-                # Quick-example chips (rendered as HTML buttons via JS)
-                def _build_chip(q: str) -> str:
-                    q_short = q[:35] + ("…" if len(q) > 35 else "")
-                    # No backslashes in f-string, use double quotes for HTML and single for JS
-                    onclick_js = f"document.getElementById('query-input').querySelector('textarea').value='{q}';document.getElementById('chips-row').dataset.chip='{q}';"
-                    return f'<span class="example-chip" onclick="{onclick_js}">{q_short}</span>'
-
-                chips_html = "".join(_build_chip(q) for q in EXAMPLE_QUERIES)
-
                 gr.HTML(f"""
-                <div style="margin-bottom:0.75rem;">
-                  <p style="color:{ACCENT_GOLD};font-size:0.84rem;font-weight:600;margin-bottom:6px;">
+                <div style="margin-bottom:0.2rem;">
+                  <p style="color:var(--accent-secondary);font-size:0.84rem;font-weight:600;margin-bottom:2px;">
                     Quick examples:
                   </p>
-                  <div id="chips-row">
-                    {chips_html}
-                  </div>
                 </div>
                 """)
+
+                with gr.Row(elem_id="chips-row"):
+                    chip_btns = []
+                    for q in EXAMPLE_QUERIES:
+                        q_short = q[:35] + ("…" if len(q) > 35 else "")
+                        btn = gr.Button(q_short, elem_classes="example-chip", size="sm")
+                        chip_btns.append((btn, q))
 
                 with gr.Row():
                     with gr.Column(scale=5):
@@ -777,17 +772,8 @@ def build_app() -> gr.Blocks:
                           f'</div>'
                 )
 
-                # Populate query from example chip click
-                # (We use a JS-event-free approach: expose EXAMPLE_QUERIES as
-                # clickable gr.Button rows for a11y and clean wiring)
-                with gr.Row(visible=False):
-                    chip_btns = [
-                        gr.Button(q, elem_id=f"chip-btn-{i}")
-                        for i, q in enumerate(EXAMPLE_QUERIES)
-                    ]
-
                 # Wire chip buttons → query input
-                for btn, q in zip(chip_btns, EXAMPLE_QUERIES):
+                for btn, q in chip_btns:
                     btn.click(fn=lambda x=q: x, outputs=query_input)
 
                 # Wire search button
