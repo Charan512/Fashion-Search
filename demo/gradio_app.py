@@ -109,7 +109,7 @@ EVALUATION_QUERIES = [
 ]
 
 # ── Thumbnail cache ───────────────────────────────────────────────────────────
-_THUMBS_DIR = Path(__file__).parent / "thumbs"
+_THUMB_PATH = Path(__file__).parent / "thumbnails.json"
 _THUMBNAILS: Optional[Dict[str, str]] = None
 
 
@@ -117,13 +117,13 @@ def _get_thumbnails() -> Dict[str, str]:
     """Load & cache thumbnail base64 map once."""
     global _THUMBNAILS
     if _THUMBNAILS is None:
-        _THUMBNAILS = {}
-        if _THUMBS_DIR.exists():
-            logger.info("Loading thumbnails from chunks…")
-            for chunk_file in sorted(_THUMBS_DIR.glob("chunk_*.json")):
-                with open(chunk_file) as f:
-                    _THUMBNAILS.update(json.load(f))
+        if _THUMB_PATH.exists():
+            logger.info("Loading thumbnails.json …")
+            with open(_THUMB_PATH) as f:
+                _THUMBNAILS = json.load(f)
             logger.info("Loaded %d thumbnails.", len(_THUMBNAILS))
+        else:
+            _THUMBNAILS = {}
     return _THUMBNAILS
 
 
