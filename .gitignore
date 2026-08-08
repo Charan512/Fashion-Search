@@ -72,7 +72,6 @@ htmlcov/
 .streamlit/secrets.toml
 
 # ── Generated build artifacts ─────────────────────────────────────────────────
-demo/coco_id_map.json
-demo/thumbnails.json
+# demo/thumbnails.json is tracked
 scripts/
 INTERVIEW_QNA.md
