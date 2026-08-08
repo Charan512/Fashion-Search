@@ -803,7 +803,7 @@ def build_app() -> gr.Blocks:
                 )
 
             # ── Examples tab ──────────────────────────────────────────────────
-            with gr.TabItem("📋 Examples"):
+            with gr.TabItem("Examples"):
                 gr.HTML(f"""
                 <div style="margin-bottom:1rem;">
                   <h2 style="color:{PRIMARY_GREEN};">Evaluation Examples</h2>
