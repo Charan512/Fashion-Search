@@ -106,6 +106,13 @@ class TestExtractClothing:
         result = qd.extract_clothing("A sunny day in the park")
         assert result == []
 
+    def test_no_false_positive_clothing_substrings(self, qd):
+        """Words like 'that', 'tight', 'stop' should not falsely trigger 'hat', 'tie', 'top'."""
+        result = qd.extract_clothing("Look at that person with a tight collar")
+        items = [r["item"] for r in result]
+        assert "hat" not in items
+        assert "tie" not in items
+
 
 # ── Context extraction ────────────────────────────────────────────────────────
 

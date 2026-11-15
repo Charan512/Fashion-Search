@@ -6,7 +6,6 @@ This file simply imports the Gradio app we built in `demo/gradio_app.py`
 and launches it.
 """
 from demo.gradio_app import build_app
-import os
 
 # We don't strictly need dotenv here since HF Spaces provides secrets via environment variables,
 # but it's safe to try loading for local testing if someone runs `python app.py`.

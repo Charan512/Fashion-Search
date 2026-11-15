@@ -7,6 +7,7 @@ These are used by QueryDecomposer to parse natural language queries.
 """
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Set
 
 # ── Color Dictionary ──────────────────────────────────────────────────────────
@@ -210,8 +211,8 @@ def estimate_formality_from_text(text: str) -> float:
         Float in ``[0, 1]`` — 1.0 is very formal.
     """
     text_lower = text.lower()
-    formal_hits = sum(1 for kw in FORMALITY_HIGH_KEYWORDS if kw in text_lower)
-    casual_hits = sum(1 for kw in FORMALITY_LOW_KEYWORDS if kw in text_lower)
+    formal_hits = sum(1 for kw in FORMALITY_HIGH_KEYWORDS if re.search(rf"\b{re.escape(kw)}\b", text_lower))
+    casual_hits = sum(1 for kw in FORMALITY_LOW_KEYWORDS if re.search(rf"\b{re.escape(kw)}\b", text_lower))
 
     total = formal_hits + casual_hits
     if total == 0:

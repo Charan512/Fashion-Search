@@ -6,26 +6,22 @@ matching attributes, and a human-readable explanation.
 """
 from __future__ import annotations
 
-import json
 import base64
 import io
+import json
 from pathlib import Path
-from typing import Optional
+from typing import List
 
+from PIL import Image
 import streamlit as st
 
 from demo.components.theme import (
     ACCENT_GOLD,
-    ERROR_RED,
     PRIMARY_GREEN,
     TEXT_MUTED,
 )
 
 # ── Thumbnail cache ───────────────────────────────────────────────────────────
-# Pre-generated 320px JPEG thumbnails for all 1000 indexed images.
-# Built by running: python3 scripts/build_thumbnails.py
-# The COCO CDN only hosts a subset of Fashionpedia images publicly (most 404),
-# so we embed thumbnails directly rather than relying on external URLs.
 _THUMB_PATH = Path(__file__).parent.parent / "thumbnails.json"
 
 
@@ -53,58 +49,33 @@ def _resolve_image(result):
     row_id = str(result.image_id).strip()
     b64 = thumbs.get(row_id)
     if b64:
-        from PIL import Image
         return Image.open(io.BytesIO(base64.b64decode(b64)))
     return None
 
 
-
-def render_result_card(
-    rank: int,
-    result,
-    show_breakdown: bool = True,
-) -> None:
-    """Render a single fashion search result card.
-
-    Args:
-        rank: 1-based result rank (displayed as #1, #2, …).
-        result: ``SearchResult`` object from the retriever.
-        show_breakdown: Whether to show the score breakdown expander.
-    """
-    with st.container():
-        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-
-        col_img, col_info = st.columns([1, 2], gap="medium")
-
-        # ── Image column ──────────────────────────────────────
-        with col_img:
-            image = _resolve_image(result)
-            if image is not None:
-                try:
-                    st.image(
-                        image,
-                        width="stretch",
-                        caption=f"#{rank}",
-                    )
-                except Exception:
-                    _render_placeholder(rank)
-            else:
-                _render_placeholder(rank)
-
-        # ── Info column ───────────────────────────────────────
-        with col_info:
-            _render_rank_header(rank, result.overall_score)
-            _render_score_bar(result.overall_score)
-            _render_explanation(result.explanation)
-            _render_attributes(result.matching_attributes, result.non_matching_attributes)
-
-            if show_breakdown:
-                _render_score_breakdown(result)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
 # ── Sub-components ────────────────────────────────────────────────────────────
+
+
+def _render_placeholder(rank: int) -> None:
+    """Render a placeholder when no image URL is available."""
+    st.markdown(
+        f"""
+        <div style="
+            width:100%;
+            aspect-ratio:1;
+            background:linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius:8px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#555;
+            font-size:1rem;
+            letter-spacing:0.05em;
+        ">No Image</div>
+        <div style="text-align:center;color:#555;font-size:0.75rem;">#{rank}</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _render_rank_header(rank: int, score: float) -> None:
@@ -157,7 +128,7 @@ def _render_explanation(explanation: str) -> None:
         )
 
 
-def _render_attributes(matching: list, non_matching: list) -> None:
+def _render_attributes(matching: List[str], non_matching: List[str]) -> None:
     """Render matched and unmatched attribute badges."""
     if matching or non_matching:
         badges_html = ""
@@ -184,23 +155,49 @@ def _render_score_breakdown(result) -> None:
                 col.metric(labels[i], f"{values[i]:.3f}")
 
 
-def _render_placeholder(rank: int) -> None:
-    """Render a placeholder when no image URL is available."""
-    st.markdown(
-        f"""
-        <div style="
-            width:100%;
-            aspect-ratio:1;
-            background:linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            border-radius:8px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            color:#555;
-            font-size:1rem;
-            letter-spacing:0.05em;
-        ">No Image</div>
-        <div style="text-align:center;color:#555;font-size:0.75rem;">#{rank}</div>
-        """,
-        unsafe_allow_html=True,
-    )
+# ── Main Card Component ───────────────────────────────────────────────────────
+
+
+def render_result_card(
+    rank: int,
+    result,
+    show_breakdown: bool = True,
+) -> None:
+    """Render a single fashion search result card.
+
+    Args:
+        rank: 1-based result rank (displayed as #1, #2, …).
+        result: ``SearchResult`` object from the retriever.
+        show_breakdown: Whether to show the score breakdown expander.
+    """
+    with st.container():
+        st.markdown('<div class="result-card">', unsafe_allow_html=True)
+
+        col_img, col_info = st.columns([1, 2], gap="medium")
+
+        # ── Image column ──────────────────────────────────────
+        with col_img:
+            image = _resolve_image(result)
+            if image is not None:
+                try:
+                    st.image(
+                        image,
+                        use_column_width=True,
+                        caption=f"#{rank}",
+                    )
+                except Exception:
+                    _render_placeholder(rank)
+            else:
+                _render_placeholder(rank)
+
+        # ── Info column ───────────────────────────────────────
+        with col_info:
+            _render_rank_header(rank, result.overall_score)
+            _render_score_bar(result.overall_score)
+            _render_explanation(result.explanation)
+            _render_attributes(result.matching_attributes, result.non_matching_attributes)
+
+            if show_breakdown:
+                _render_score_breakdown(result)
+
+        st.markdown("</div>", unsafe_allow_html=True)

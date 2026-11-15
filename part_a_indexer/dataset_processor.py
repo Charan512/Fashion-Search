@@ -16,7 +16,6 @@ from PIL import Image
 
 from part_a_indexer.utils.image_utils import (
     batch_generator,
-    get_image_paths,
     load_pil_image,
     path_to_id,
     pil_to_numpy,
@@ -214,4 +213,8 @@ def load_ashraq_dataset(
 
     logger.info("Dataset load complete: %d images ready.", len(images))
     return images, metadata
+
+
+# Backwards compatibility alias for notebooks/scripts
+load_fashionpedia = load_ashraq_dataset
 

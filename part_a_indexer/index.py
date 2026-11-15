@@ -19,10 +19,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from part_a_indexer.attribute_extractor import AttributeExtractor
-from part_a_indexer.dataset_processor import ImageProcessor, load_ashraq_dataset
+from part_a_indexer.dataset_processor import load_ashraq_dataset
 from part_a_indexer.embedding_extractor import EmbeddingExtractor
 from part_a_indexer.utils.config_utils import configure_logging, get_env_var, load_config
-from part_a_indexer.utils.image_utils import path_to_id
 from part_a_indexer.vector_storage import VectorStore
 
 logger = logging.getLogger(__name__)
@@ -100,8 +99,14 @@ def build_records(
                 # Attributes
                 **attributes[i],
                 # Source metadata
-                "source": src_meta.get("source", "fashionpedia"),
+                "source": src_meta.get("source", "ashraq_fashion_products"),
                 "split": src_meta.get("split", "train"),
+                "gender": src_meta.get("gender", ""),
+                "masterCategory": src_meta.get("masterCategory", ""),
+                "subCategory": src_meta.get("subCategory", ""),
+                "articleType": src_meta.get("articleType", ""),
+                "baseColour": src_meta.get("baseColour", ""),
+                "productDisplayName": src_meta.get("productDisplayName", ""),
                 "indexed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
@@ -167,9 +172,9 @@ def build_index(
         logger.info("[DRY-RUN] Pinecone writes are disabled.")
 
     # ── Indexing loop ─────────────────────────────────────────
-    processor = ImageProcessor(target_size=224)
     batch_count = 0
     t_start = time.time()
+    last_idx = start_batch
 
     for batch_idx_global, (batch_images, batch_ids) in enumerate(
         _generate_batches(images, metadata_list, batch_size)
@@ -237,12 +242,13 @@ def build_index(
             rate,
         )
 
+        last_idx = batch_idx_global + 1
         # Save checkpoint every 10 batches
         if batch_count % 10 == 0:
-            save_checkpoint(batch_idx_global + 1, total_processed)
+            save_checkpoint(last_idx, total_processed)
 
     # Final checkpoint
-    save_checkpoint(batch_count, total_processed)
+    save_checkpoint(last_idx, total_processed)
 
     elapsed_total = time.time() - t_start
     logger.info("=" * 60)
@@ -256,8 +262,6 @@ def build_index(
 
 def _generate_batches(images, metadata_list, batch_size):
     """Yield (image_batch, id_batch) pairs from the full image list."""
-    from part_a_indexer.utils.image_utils import batch_generator
-
     for batch_start in range(0, len(images), batch_size):
         batch_images = images[batch_start : batch_start + batch_size]
         batch_ids = [

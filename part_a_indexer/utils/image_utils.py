@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Generator, Iterator, List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError

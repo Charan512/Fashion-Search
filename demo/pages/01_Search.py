@@ -17,7 +17,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from demo.components.result_card import render_result_card
-from demo.components.search_box import EXAMPLE_QUERIES, render_search_box
+from demo.components.search_box import EXAMPLE_QUERIES
 from demo.components.theme import ACCENT_GOLD, PRIMARY_GREEN, apply_custom_theme
 from demo.components.utils import show_error, show_no_results
 
@@ -61,7 +61,7 @@ chip_cols = st.columns(5)
 for i, (col, query) in enumerate(zip(chip_cols, EXAMPLE_QUERIES)):
     with col:
         short = query[:28] + "…" if len(query) > 28 else query
-        if st.button(short, key=f"chip_{i}", width="stretch"):
+        if st.button(short, key=f"chip_{i}", use_container_width=True):
             st.session_state["prefill_query"] = query
 
 # ── Search input ──────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ with col_k:
     top_k = st.slider("Number of results", 1, 20, 10)
 with col_btn:
     st.markdown("<br>", unsafe_allow_html=True)
-    search_clicked = st.button("Search", type="primary", width="stretch")
+    search_clicked = st.button("Search", type="primary", use_container_width=True)
 
 # ── Query components debug panel ──────────────────────────────────────────────
 if query and st.toggle("🔬 Show query decomposition", value=False):

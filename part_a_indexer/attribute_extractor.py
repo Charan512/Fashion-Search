@@ -38,7 +38,7 @@ CLOTHING_ITEMS: List[str] = [
 ]
 
 SETTINGS: List[str] = [
-    "indoor office", "outdoor park", "city street",
+    "indoor office", "outdoor park", "outdoor street",
     "home interior", "gym", "beach", "restaurant", "shopping mall",
 ]
 
@@ -164,6 +164,19 @@ class AttributeExtractor:
         formality = self.score_formality(image_features=image_features)
         setting = self.classify_setting(image_features=image_features)
         style = self.classify_style(image_features=image_features)
+
+        # Fallback to top-1 if confidence threshold filtered out all predictions
+        if not colors:
+            prompts = [f"This clothing contains the color {c}" for c in COLOR_NAMES]
+            color_scores = self._score_prompts_fast(None, image_features, prompts)
+            best_c = int(np.argmax(color_scores))
+            colors = [(COLOR_NAMES[best_c], round(float(color_scores[best_c]), 4))]
+
+        if not clothing:
+            prompts = [f"This person is wearing a {item}" for item in CLOTHING_ITEMS]
+            cloth_scores = self._score_prompts_fast(None, image_features, prompts)
+            best_cl = int(np.argmax(cloth_scores))
+            clothing = [(CLOTHING_ITEMS[best_cl], round(float(cloth_scores[best_cl]), 4))]
 
         color_names = [c for c, _ in colors]
         primary_colors = color_names[:2]

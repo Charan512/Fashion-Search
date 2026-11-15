@@ -22,6 +22,8 @@ setup(
         "python-dotenv>=1.0.0",
         "tenacity>=8.2.0",
         "streamlit>=1.28.0",
+        "gradio>=4.0.0",
+        "spaces",
         "spacy>=3.6.0",
     ],
     entry_points={

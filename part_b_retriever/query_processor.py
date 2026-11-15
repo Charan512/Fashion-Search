@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from part_b_retriever.utils.dictionaries import (
     CLOTHING_DICTIONARY,
@@ -22,10 +22,6 @@ from part_b_retriever.utils.dictionaries import (
     SETTING_DICTIONARY,
     STYLE_DICTIONARY,
     estimate_formality_from_text,
-    get_canonical_clothing,
-    get_canonical_color,
-    get_canonical_setting,
-    get_canonical_style,
 )
 
 logger = logging.getLogger(__name__)
@@ -156,7 +152,8 @@ class QueryDecomposer:
         for canonical, synonyms in CLOTHING_DICTIONARY.items():
             synonyms_sorted = sorted(synonyms, key=len, reverse=True)
             for syn in synonyms_sorted:
-                if syn in query_lower and canonical not in found_items:
+                pattern = rf"\b{re.escape(syn)}\b"
+                if re.search(pattern, query_lower) and canonical not in found_items:
                     found_items.add(canonical)
                     results.append({"item": canonical, "confidence": 0.95})
                     break
@@ -171,7 +168,8 @@ class QueryDecomposer:
 
         Returns:
             Dict with keys ``setting`` (str or None),
-            ``formality`` (float 0–1), ``confidence`` (float).
+            ``formality`` (float 0–1), ``confidence`` (float),
+            ``formality_specified`` (bool).
         """
         query_lower = query.lower()
 
@@ -182,18 +180,25 @@ class QueryDecomposer:
         
         for canonical, keywords in SETTING_DICTIONARY.items():
             for kw in keywords:
-                if kw in query_lower and len(kw) > best_match_len:
+                pattern = rf"\b{re.escape(kw)}\b"
+                if re.search(pattern, query_lower) and len(kw) > best_match_len:
                     setting = canonical
                     setting_confidence = 0.90
                     best_match_len = len(kw)
 
         # Formality estimation
+        from part_b_retriever.utils.dictionaries import FORMALITY_HIGH_KEYWORDS, FORMALITY_LOW_KEYWORDS
+        has_formal = any(re.search(rf"\b{re.escape(kw)}\b", query_lower) for kw in FORMALITY_HIGH_KEYWORDS)
+        has_casual = any(re.search(rf"\b{re.escape(kw)}\b", query_lower) for kw in FORMALITY_LOW_KEYWORDS)
+        formality_specified = has_formal or has_casual
+
         formality = estimate_formality_from_text(query)
 
         return {
             "setting": setting,
             "formality": formality,
             "confidence": setting_confidence,
+            "formality_specified": formality_specified,
         }
 
     def extract_style(self, query: str) -> Optional[str]:
@@ -208,7 +213,7 @@ class QueryDecomposer:
         """
         query_lower = query.lower()
         for canonical, keywords in STYLE_DICTIONARY.items():
-            if any(kw in query_lower for kw in keywords):
+            if any(re.search(rf"\b{re.escape(kw)}\b", query_lower) for kw in keywords):
                 return canonical
         return None
 
@@ -260,4 +265,4 @@ class QueryDecomposer:
             "long", "short", "mini", "maxi", "cropped",
         ]
         query_lower = query.lower()
-        return [kw for kw in descriptor_keywords if kw in query_lower]
+        return [kw for kw in descriptor_keywords if re.search(rf"\b{re.escape(kw)}\b", query_lower)]

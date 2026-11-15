@@ -7,9 +7,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from unittest.mock import MagicMock
+import numpy as np
 import pytest
 
 from part_b_retriever.attribute_matching import AttributeMatcher
+from part_b_retriever.multi_vector_search import MultiVectorSearch
 from part_b_retriever.ranker import ResultRanker
 from part_b_retriever.utils.explainability import SearchResult
 
@@ -262,3 +265,46 @@ class TestResultRanker:
 
         # Formal image should be in results
         assert "img_formal" in result_ids
+
+
+# ── MultiVectorSearch tests ───────────────────────────────────────────────────
+
+
+class TestMultiVectorSearch:
+    def test_combine_results_preserves_fashion_metadata(self):
+        """Metadata from results_fashion is retained if image not in results_semantic."""
+        mvs = MultiVectorSearch(
+            vector_store=MagicMock(),
+            embedder=MagicMock(),
+            semantic_weight=0.5,
+            fashion_weight=0.3,
+        )
+
+        results_semantic = [
+            {"id": "img_sem_only", "score": 0.9, "metadata": {"color": "red"}},
+        ]
+        results_fashion = [
+            {"id": "img_fash_only", "score": 0.85, "metadata": {"color": "blue", "item": "shirt"}},
+        ]
+
+        combined = mvs._combine_results(results_semantic, results_fashion)
+
+        assert "img_fash_only" in combined
+        assert combined["img_fash_only"]["metadata"] == {"color": "blue", "item": "shirt"}
+        assert combined["img_fash_only"]["fashion_score"] == 0.85
+        assert combined["img_fash_only"]["semantic_score"] == 0.0
+
+    def test_combine_results_weighted_scores(self):
+        """Scores are properly weighted (0.5 * S + 0.3 * F)."""
+        mvs = MultiVectorSearch(
+            vector_store=MagicMock(),
+            embedder=MagicMock(),
+            semantic_weight=0.5,
+            fashion_weight=0.3,
+        )
+
+        results_semantic = [{"id": "img_1", "score": 1.0, "metadata": {"id": "1"}}]
+        results_fashion = [{"id": "img_1", "score": 1.0, "metadata": {"id": "1"}}]
+
+        combined = mvs._combine_results(results_semantic, results_fashion)
+        assert combined["img_1"]["combined_score"] == pytest.approx(0.8, abs=1e-5)

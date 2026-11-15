@@ -6,7 +6,7 @@ Uses mocked Pinecone clients so no live Pinecone connection is needed.
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest

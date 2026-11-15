@@ -724,10 +724,10 @@ def build_app() -> gr.Blocks:
         """)
 
         # ── Tabs ──────────────────────────────────────────────────────────────
-        with gr.Tabs():
+        with gr.Tabs() as tabs:
 
             # ── Search tab ────────────────────────────────────────────────────
-            with gr.TabItem("Search"):
+            with gr.TabItem("Search", id="tab_search"):
 
                 gr.HTML(f"""
                 <div style="margin-bottom:0.2rem;">
@@ -771,12 +771,14 @@ def build_app() -> gr.Blocks:
 
                 gr.HTML(f'<hr style="border-color:{BORDER_GOLD};opacity:0.3;margin:1rem 0;">')
 
-                # Results area
-                results_output = gr.HTML(
-                    value=f'<div class="no-results" style="color:{TEXT_MUTED};">'
-                          f'Enter a query above and press Search to find fashion images.'
-                          f'</div>'
+                initial_results_html = (
+                    f'<div class="no-results" style="color:{TEXT_MUTED};">'
+                    f'Enter a query above and press Search to find fashion images.'
+                    f'</div>'
                 )
+
+                # Results area
+                results_output = gr.HTML(value=initial_results_html)
 
                 # Wire chip buttons → query input
                 for btn, q in chip_btns:
@@ -798,12 +800,12 @@ def build_app() -> gr.Blocks:
 
                 # Clear button
                 clear_btn.click(
-                    fn=lambda: ("", "", ""),
+                    fn=lambda: ("", initial_results_html, ""),
                     outputs=[query_input, results_output, decomp_output],
                 )
 
             # ── Examples tab ──────────────────────────────────────────────────
-            with gr.TabItem("Examples"):
+            with gr.TabItem("Examples", id="tab_examples"):
                 gr.HTML(f"""
                 <div style="margin-bottom:1rem;">
                   <h2 style="color:{PRIMARY_GREEN};">Evaluation Examples</h2>
@@ -835,6 +837,12 @@ def build_app() -> gr.Blocks:
                                     elem_id=f"example-run-{i}",
                                 )
                                 example_run_btns.append((btn, eq["query"]))
+
+                            for btn, q in example_run_btns:
+                                btn.click(
+                                    fn=lambda x=q: (x, *run_search(x, 10, False), gr.Tabs(selected="tab_search")),
+                                    outputs=[query_input, results_output, decomp_output, tabs],
+                                )
 
             # ── About tab ─────────────────────────────────────────────────────
             with gr.TabItem("About"):

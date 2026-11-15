@@ -180,13 +180,13 @@ class MultiVectorSearch:
         Returns:
             Dict mapping ``image_id`` to a merged result dict.
         """
-        # Build id → score maps
+        # Build id → score and metadata maps
         semantic_map: Dict[str, Tuple[float, Dict]] = {
-            r["id"]: (r["score"], r.get("metadata", {}))
+            r["id"]: (r["score"], r.get("metadata") or {})
             for r in results_semantic
         }
-        fashion_map: Dict[str, float] = {
-            r["id"]: r["score"]
+        fashion_map: Dict[str, Tuple[float, Dict]] = {
+            r["id"]: (r["score"], r.get("metadata") or {})
             for r in results_fashion
         }
 
@@ -195,8 +195,9 @@ class MultiVectorSearch:
 
         merged: Dict[str, Dict[str, Any]] = {}
         for img_id in all_ids:
-            s_score, metadata = semantic_map.get(img_id, (0.0, {}))
-            f_score = fashion_map.get(img_id, 0.0)
+            s_score, s_meta = semantic_map.get(img_id, (0.0, {}))
+            f_score, f_meta = fashion_map.get(img_id, (0.0, {}))
+            metadata = s_meta if s_meta else f_meta
 
             combined_score = (
                 self.semantic_weight * s_score

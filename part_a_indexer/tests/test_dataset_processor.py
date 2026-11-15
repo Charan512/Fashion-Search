@@ -6,12 +6,7 @@ and graceful handling of corrupted or oversized inputs.
 """
 from __future__ import annotations
 
-import io
-import os
-import tempfile
 from pathlib import Path
-from typing import List
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest

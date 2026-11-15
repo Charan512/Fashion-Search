@@ -18,7 +18,6 @@ import numpy as np
 import torch
 from PIL import Image
 from tenacity import (
-    RetryError,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
@@ -214,6 +213,9 @@ class EmbeddingExtractor:
         Returns:
             Float32 array of shape ``(N, 256)``, L2-normalised.
         """
+        if not images:
+            return np.zeros((0, EMBEDDING_DIM_SCENE), dtype=np.float32)
+
         clip_embeds = self._extract_clip_visual(images, normalise=False)
         tensor = torch.from_numpy(clip_embeds).to(self.device)
 

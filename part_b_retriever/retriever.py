@@ -15,11 +15,10 @@ from __future__ import annotations
 import logging
 import os
 import time
-from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 from part_a_indexer.embedding_extractor import EmbeddingExtractor
-from part_a_indexer.utils.config_utils import get_env_var, load_config
+from part_a_indexer.utils.config_utils import load_config
 from part_a_indexer.vector_storage import VectorStore
 from part_b_retriever.attribute_matching import AttributeMatcher
 from part_b_retriever.multi_vector_search import MultiVectorSearch
@@ -75,18 +74,21 @@ class FashionRetriever:
         self._device = device or os.environ.get("DEVICE", "cpu")
 
         # Resolve Pinecone credentials
+        cfg_db = self._config.get("vector_db", {})
         self._api_key = pinecone_api_key or os.environ.get("PINECONE_API_KEY", "")
         self._index_name = pinecone_index_name or os.environ.get(
-            "PINECONE_INDEX_NAME", "fashion-retrieval"
+            "PINECONE_INDEX_NAME", cfg_db.get("index_name", "fashion-retrieval")
         )
 
-        self._top_k_candidates = top_k_candidates
-        self._semantic_weight = semantic_weight
-        self._fashion_weight = fashion_weight
-        self._attribute_weight = attribute_weight
-        self._confidence_threshold = confidence_threshold
-        self._diversity_enabled = diversity_enabled
-        self._hard_constraints = hard_constraints
+        cfg_search = self._config.get("search", {})
+        cfg_weights = cfg_search.get("weights", {})
+        self._top_k_candidates = top_k_candidates or cfg_search.get("top_k_candidates", 100)
+        self._semantic_weight = semantic_weight if semantic_weight != 0.5 else cfg_weights.get("semantic", 0.5)
+        self._fashion_weight = fashion_weight if fashion_weight != 0.3 else cfg_weights.get("fashion", 0.3)
+        self._attribute_weight = attribute_weight if attribute_weight != 0.2 else cfg_weights.get("attribute", 0.2)
+        self._confidence_threshold = confidence_threshold if confidence_threshold != 0.15 else cfg_search.get("confidence_threshold", 0.15)
+        self._diversity_enabled = diversity_enabled if diversity_enabled is not True else cfg_search.get("diversity_enabled", True)
+        self._hard_constraints = hard_constraints if hard_constraints is not True else cfg_search.get("hard_constraints", True)
 
         # Components (initialised lazily)
         self._embedder: Optional[EmbeddingExtractor] = None

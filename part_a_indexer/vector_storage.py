@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from tenacity import (
     retry,
-    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
     before_sleep_log,
@@ -89,7 +88,13 @@ class VectorStore:
         Retried up to 3 times with exponential backoff to handle
         transient network connectivity issues.
         """
-        from pinecone import Pinecone, ServerlessSpec  # noqa: F401
+        try:
+            from pinecone import Pinecone  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "The 'pinecone' package is required to use PineconeStorage. "
+                "Install it with: pip install pinecone"
+            ) from exc
 
         pc = Pinecone(api_key=self.api_key)
         self._pc = pc
@@ -102,7 +107,7 @@ class VectorStore:
         Uses the Serverless free tier (``us-east-1`` / AWS).
         """
         try:
-            from pinecone import Pinecone, ServerlessSpec
+            from pinecone import Pinecone, ServerlessSpec  # type: ignore
 
             pc = Pinecone(api_key=self.api_key)
 
@@ -120,7 +125,10 @@ class VectorStore:
                 # Wait until the index is ready
                 for attempt in range(30):
                     status = pc.describe_index(self.index_name).status
-                    if status.get("ready", False):
+                    ready = getattr(status, "ready", False) if hasattr(status, "ready") else (
+                        status.get("ready", False) if isinstance(status, dict) else False
+                    )
+                    if ready:
                         break
                     time.sleep(2)
                     logger.debug("Waiting for index to be ready (attempt %d)…", attempt + 1)
